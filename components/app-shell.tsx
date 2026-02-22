@@ -5,10 +5,10 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import {
   LayoutDashboard,
-  Palette,
   Menu,
   X,
   LogOut,
+  Settings,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -16,7 +16,7 @@ import { createClient } from "@/lib/supabase/client";
 
 const navItems = [
   { href: "/app", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/app/design", label: "Design", icon: Palette },
+  { href: "/app/settings/account", label: "Settings", icon: Settings },
 ];
 
 export function AppShell({

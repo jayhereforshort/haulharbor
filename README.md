@@ -108,7 +108,6 @@ git push -u origin main
   - `(app)/app/` – authenticated app
     - `layout.tsx` – auth check + app shell (sidebar, topbar, mobile nav)
     - `page.tsx` – dashboard (KPI cards + empty-state guidance)
-    - `design/page.tsx` – UI patterns reference (buttons, inputs, tags, modal, table, cards, empty state, skeletons, toast)
 - `components/` – `ui/` (design system), `app-shell.tsx`
 - `lib/` – `utils.ts`, `supabase/` (client, server, middleware)
 - `supabase/sql_history/` – SQL snapshots from MCP-applied schema changes (when used)
@@ -118,7 +117,6 @@ git push -u origin main
 - **Tokens:** `app/globals.css` – spacing, radius, shadows, semantic colors
 - **Typography:** `.text-display`, `.text-heading`, `.text-subheading`, `.text-body`, `.text-caption`
 - **Components:** Card, Table, Badge, Button, Input, Dialog, Toast, Skeleton, EmptyState
-- **Reference:** `/app/design` (internal) shows all patterns for consistent future screens
 
 ## Auth
 
