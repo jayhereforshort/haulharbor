@@ -16,6 +16,7 @@ import {
   type Sale,
   type SaleLineItem,
 } from "@/lib/sales";
+import { SoldRowActions } from "./sold-row-actions";
 
 type SaleRow = Sale & {
   line_items: SaleLineItem[];
@@ -23,6 +24,7 @@ type SaleRow = Sale & {
 
 type Props = {
   sales: SaleRow[];
+  titleById: Record<string, string>;
 };
 
 function channelLabel(channel: string): string {
@@ -41,7 +43,17 @@ function statusVariant(
   return "outline";
 }
 
-export function SoldTable({ sales }: Props) {
+function itemSummary(
+  lineItems: SaleLineItem[],
+  titleById: Record<string, string>
+): string {
+  if (!lineItems.length) return "—";
+  const first = titleById[lineItems[0].inventory_item_id] ?? "Unknown item";
+  if (lineItems.length === 1) return first;
+  return `${first} (+${lineItems.length - 1} more)`;
+}
+
+export function SoldTable({ sales, titleById }: Props) {
   if (!sales.length) {
     return (
       <p className="py-8 text-center text-sm text-muted-foreground">
@@ -54,17 +66,15 @@ export function SoldTable({ sales }: Props) {
     <Table>
       <TableHeader>
         <TableRow>
+          <TableHead>ITEM</TableHead>
           <TableHead>DATE</TableHead>
           <TableHead>CHANNEL</TableHead>
-          <TableHead>BUYER</TableHead>
           <TableHead className="text-right">ITEMS</TableHead>
           <TableHead className="text-right">GROSS</TableHead>
-          <TableHead className="text-right">FEES</TableHead>
-          <TableHead className="text-right">TAXES</TableHead>
-          <TableHead className="text-right">SHIPPING</TableHead>
           <TableHead className="text-right">NET</TableHead>
           <TableHead className="text-right">PROFIT</TableHead>
           <TableHead>STATUS</TableHead>
+          <TableHead className="w-[100px]">ACTIONS</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -73,36 +83,29 @@ export function SoldTable({ sales }: Props) {
           const net = saleNet(gross, sale.fees, sale.taxes, sale.shipping);
           const profit = saleProfit(net, sale.line_items);
           const itemsCount = sale.line_items.reduce((s, l) => s + l.qty_sold, 0);
+          const summary = itemSummary(sale.line_items, titleById);
           return (
             <TableRow key={sale.id}>
-              <TableCell>
+              <TableCell className="max-w-[220px]">
                 <Link
                   href={`/app/sold/${sale.id}`}
-                  className="font-medium text-primary hover:underline"
+                  className="font-medium text-primary hover:underline truncate block"
+                  title={summary}
                 >
-                  {new Date(sale.sale_date).toLocaleDateString("en-US", {
-                    month: "numeric",
-                    day: "numeric",
-                    year: "numeric",
-                  })}
+                  {summary.length > 40 ? `${summary.slice(0, 40)}...` : summary}
                 </Link>
               </TableCell>
-              <TableCell>{channelLabel(sale.channel)}</TableCell>
-              <TableCell className="max-w-[140px] truncate text-muted-foreground">
-                {sale.buyer ?? "—"}
+              <TableCell>
+                {new Date(sale.sale_date).toLocaleDateString("en-US", {
+                  month: "numeric",
+                  day: "numeric",
+                  year: "numeric",
+                })}
               </TableCell>
+              <TableCell>{channelLabel(sale.channel)}</TableCell>
               <TableCell className="text-right">{itemsCount}</TableCell>
               <TableCell className="text-right font-medium">
                 {formatCurrency(gross)}
-              </TableCell>
-              <TableCell className="text-right text-muted-foreground">
-                {formatCurrency(sale.fees)}
-              </TableCell>
-              <TableCell className="text-right text-muted-foreground">
-                {formatCurrency(sale.taxes)}
-              </TableCell>
-              <TableCell className="text-right text-muted-foreground">
-                {formatCurrency(sale.shipping)}
               </TableCell>
               <TableCell className="text-right font-medium">
                 {formatCurrency(net)}
@@ -122,6 +125,9 @@ export function SoldTable({ sales }: Props) {
                 <Badge variant={statusVariant(sale.status)} className="capitalize">
                   {sale.status.replace("_", " ")}
                 </Badge>
+              </TableCell>
+              <TableCell>
+                <SoldRowActions saleId={sale.id} />
               </TableCell>
             </TableRow>
           );

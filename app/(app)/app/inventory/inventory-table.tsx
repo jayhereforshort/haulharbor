@@ -25,6 +25,7 @@ type InventoryRow = {
 };
 
 type Props = {
+  accountId: string;
   items: InventoryRow[];
 };
 
@@ -42,7 +43,7 @@ function formatSubtitle(createdAt: string) {
   })}`;
 }
 
-export function InventoryTable({ items }: Props) {
+export function InventoryTable({ accountId, items }: Props) {
   if (!items.length) {
     return (
       <p className="py-8 text-center text-sm text-muted-foreground">
@@ -113,7 +114,16 @@ export function InventoryTable({ items }: Props) {
             </TableCell>
             <TableCell>{item.qty_on_hand}</TableCell>
             <TableCell>
-              <InventoryRowActions itemId={item.id} />
+              <InventoryRowActions
+                itemId={item.id}
+                accountId={accountId}
+                item={{
+                  title: item.title,
+                  qty_on_hand: item.qty_on_hand,
+                  list_price: item.list_price,
+                  unit_cost: item.unit_cost,
+                }}
+              />
             </TableCell>
           </TableRow>
         ))}

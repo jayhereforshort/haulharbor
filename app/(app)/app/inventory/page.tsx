@@ -116,7 +116,7 @@ export default async function InventoryPage({
           </p>
         </div>
         <div className="rounded-lg border border-border bg-card">
-          <InventoryTable items={filtered} />
+          <InventoryTable accountId={account.id} items={filtered} />
         </div>
       </section>
     </div>

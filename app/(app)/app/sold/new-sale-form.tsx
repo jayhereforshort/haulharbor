@@ -5,16 +5,10 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createSale } from "./actions";
 import { SALE_CHANNELS, SALE_STATUSES } from "@/lib/sales";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Plus, Trash2 } from "lucide-react";
 
@@ -44,6 +38,10 @@ const defaultLine = (): LineRow => ({
   line_taxes: 0,
   line_shipping: 0,
 });
+
+const selectClassName = cn(
+  "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 min-h-[44px] sm:min-h-[40px]"
+);
 
 export function NewSaleForm({ accountId, inventoryItems }: Props) {
   const router = useRouter();
@@ -157,21 +155,20 @@ export function NewSaleForm({ accountId, inventoryItems }: Props) {
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <div className="space-y-2">
               <Label htmlFor="channel">Channel</Label>
-              <Select
+              <select
+                id="channel"
                 value={channel}
-                onValueChange={(v) => setChannel(v as "EBAY" | "OFFLINE" | "WHOLESALE")}
+                onChange={(e) =>
+                  setChannel(e.target.value as "EBAY" | "OFFLINE" | "WHOLESALE")
+                }
+                className={selectClassName}
               >
-                <SelectTrigger id="channel">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {SALE_CHANNELS.map((c) => (
-                    <SelectItem key={c} value={c}>
-                      {c === "EBAY" ? "eBay" : c === "OFFLINE" ? "Offline" : "Wholesale"}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                {SALE_CHANNELS.map((c) => (
+                  <option key={c} value={c}>
+                    {c === "EBAY" ? "eBay" : c === "OFFLINE" ? "Offline" : "Wholesale"}
+                  </option>
+                ))}
+              </select>
             </div>
             <div className="space-y-2">
               <Label htmlFor="sale_date">Sale date</Label>
@@ -185,18 +182,18 @@ export function NewSaleForm({ accountId, inventoryItems }: Props) {
             </div>
             <div className="space-y-2">
               <Label htmlFor="status">Status</Label>
-              <Select value={status} onValueChange={setStatus}>
-                <SelectTrigger id="status">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {SALE_STATUSES.map((s) => (
-                    <SelectItem key={s} value={s}>
-                      {s.replace("_", " ")}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <select
+                id="status"
+                value={status}
+                onChange={(e) => setStatus(e.target.value)}
+                className={selectClassName}
+              >
+                {SALE_STATUSES.map((s) => (
+                  <option key={s} value={s}>
+                    {s.replace("_", " ")}
+                  </option>
+                ))}
+              </select>
             </div>
             <div className="space-y-2">
               <Label htmlFor="buyer">Buyer (optional)</Label>
@@ -277,32 +274,27 @@ export function NewSaleForm({ accountId, inventoryItems }: Props) {
                 >
                   <div className="min-w-[180px] flex-1 space-y-2 sm:min-w-[200px]">
                     <Label className="text-xs">Item</Label>
-                    <Select
+                    <select
                       value={line.inventory_item_id}
-                      onValueChange={(v) =>
-                        updateLine(index, { inventory_item_id: v })
+                      onChange={(e) =>
+                        updateLine(index, { inventory_item_id: e.target.value })
                       }
+                      className={selectClassName}
                     >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select item" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {availableItems.map((item) => (
-                          <SelectItem
-                            key={item.id}
-                            value={item.id}
-                            disabled={
-                              item.qty_on_hand < 1
-                            }
-                          >
-                            {item.title.length > 40
-                              ? `${item.title.slice(0, 40)}...`
-                              : item.title}{" "}
-                            (qty: {item.qty_on_hand})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      <option value="">Select item</option>
+                      {availableItems.map((item) => (
+                        <option
+                          key={item.id}
+                          value={item.id}
+                          disabled={item.qty_on_hand < 1}
+                        >
+                          {item.title.length > 40
+                            ? `${item.title.slice(0, 40)}...`
+                            : item.title}{" "}
+                          (qty: {item.qty_on_hand})
+                        </option>
+                      ))}
+                    </select>
                   </div>
                   <div className="w-20 space-y-2">
                     <Label className="text-xs">Qty</Label>

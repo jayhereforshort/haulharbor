@@ -15,10 +15,13 @@ import {
 } from "@/components/ui/table";
 import {
   formatCurrency,
-  saleGross,
+  saleCost,
   saleNet,
   saleProfit,
+  saleProfitMargin,
+  saleGross,
 } from "@/lib/sales";
+import { DeleteSaleButton } from "./delete-sale-button";
 
 export const dynamic = "force-dynamic";
 
@@ -79,7 +82,9 @@ export default async function SaleDetailPage({
 
   const gross = saleGross(items);
   const net = saleNet(gross, sale.fees, sale.taxes, sale.shipping);
+  const cost = saleCost(items);
   const profit = saleProfit(net, items);
+  const profitMargin = saleProfitMargin(profit, net);
 
   return (
     <div className="space-y-6">
@@ -116,23 +121,9 @@ export default async function SaleDetailPage({
         <Card className="border-border shadow-card">
           <CardContent className="pt-6">
             <p className="text-xs uppercase tracking-wide text-muted-foreground">
-              Gross
+              Cost
             </p>
-            <p className="text-2xl font-semibold">{formatCurrency(gross)}</p>
-          </CardContent>
-        </Card>
-        <Card className="border-border shadow-card">
-          <CardContent className="pt-6">
-            <p className="text-xs uppercase tracking-wide text-muted-foreground">
-              Fees / Taxes / Ship
-            </p>
-            <p className="text-2xl font-semibold">
-              {formatCurrency(sale.fees + sale.taxes + sale.shipping)}
-            </p>
-            <p className="text-caption mt-1">
-              {formatCurrency(sale.fees)} / {formatCurrency(sale.taxes)} /{" "}
-              {formatCurrency(sale.shipping)}
-            </p>
+            <p className="text-2xl font-semibold">{formatCurrency(cost)}</p>
           </CardContent>
         </Card>
         <Card className="border-border shadow-card">
@@ -156,6 +147,18 @@ export default async function SaleDetailPage({
               }`}
             >
               {formatCurrency(profit)}
+            </p>
+          </CardContent>
+        </Card>
+        <Card className="border-border shadow-card">
+          <CardContent className="pt-6">
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">
+              Profit margin
+            </p>
+            <p className="text-2xl font-semibold">
+              {profitMargin != null
+                ? `${profitMargin.toFixed(1)}%`
+                : "—"}
             </p>
           </CardContent>
         </Card>
@@ -231,13 +234,14 @@ export default async function SaleDetailPage({
         </CardContent>
       </Card>
 
-      <div className="flex gap-3">
+      <div className="flex flex-wrap gap-3">
         <Button variant="outline" asChild>
           <Link href="/app/sold">Back to sales</Link>
         </Button>
         <Button variant="outline" asChild>
           <Link href="/app/inventory">Inventory</Link>
         </Button>
+        <DeleteSaleButton saleId={params.saleId} />
       </div>
     </div>
   );

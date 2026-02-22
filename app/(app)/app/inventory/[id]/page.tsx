@@ -45,6 +45,54 @@ export default async function InventoryItemDetailPage({
     new Set((allItems ?? []).map((entry) => entry.internal_category).filter(Boolean))
   ) as string[];
 
+  const { data: lineItemsWithSales } = await supabase
+    .from("sale_line_items")
+    .select(
+      `
+      id,
+      sale_id,
+      qty_sold,
+      unit_price,
+      sold_unit_cost,
+      created_at,
+      sales (
+        id,
+        sale_date,
+        channel,
+        status
+      )
+    `
+    )
+    .eq("inventory_item_id", params.id)
+    .eq("account_id", account.id)
+    .order("created_at", { ascending: false });
+
+  type SaleRow = { id: string; sale_date: string; channel: string; status: string };
+  type LineRow = {
+    id: string;
+    sale_id: string;
+    qty_sold: number;
+    unit_price: number;
+    sold_unit_cost: number | null;
+    created_at: string;
+    sales: SaleRow | SaleRow[] | null;
+  };
+  const saleHistoryLines = (lineItemsWithSales ?? []) as LineRow[];
+  const saleHistory = saleHistoryLines.map((line) => {
+    const sale = Array.isArray(line.sales) ? line.sales[0] : line.sales;
+    return {
+      lineId: line.id,
+      saleId: line.sale_id,
+      saleDate: sale?.sale_date ?? "",
+      channel: sale?.channel ?? "—",
+      status: sale?.status ?? "—",
+      qtySold: line.qty_sold,
+      unitPrice: line.unit_price,
+      soldUnitCost: line.sold_unit_cost,
+      createdAt: line.created_at,
+    };
+  });
+
   const qtyAvailable = Math.max(0, item.qty_on_hand - item.qty_sold);
   const metaLine = [
     `SKU: ${item.id.slice(0, 8).toUpperCase()}`,
@@ -164,17 +212,57 @@ export default async function InventoryItemDetailPage({
           </Card>
 
           <Card className="border-border shadow-card">
-            <CardHeader className="flex flex-row items-center justify-between">
-              <div>
-                <CardTitle>Sale history</CardTitle>
-                <CardDescription>Per-sale detail and profit timeline for this item.</CardDescription>
-              </div>
-              <Badge variant="warning">PLACEHOLDER</Badge>
+            <CardHeader>
+              <CardTitle>Sale history</CardTitle>
+              <CardDescription>Timeline of sales for this item. Latest first.</CardDescription>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-muted-foreground">
-                Placeholder: this panel will show sold transactions, fees, taxes, and net profit rollup.
-              </p>
+              {saleHistory.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  No sales recorded yet for this item. Record a sale from the inventory table or from Sold.
+                </p>
+              ) : (
+                <ul className="space-y-0">
+                  {saleHistory.map((entry, index) => {
+                    const subtotal = entry.qtySold * entry.unitPrice;
+                    const cost = (entry.soldUnitCost ?? 0) * entry.qtySold;
+                    const lineProfit = subtotal - cost;
+                    return (
+                      <li
+                        key={entry.lineId}
+                        className={`flex flex-wrap items-center gap-x-4 gap-y-1 py-3 ${
+                          index > 0 ? "border-t border-border" : ""
+                        }`}
+                      >
+                        <span className="text-sm font-medium text-muted-foreground shrink-0 w-24">
+                          {new Date(entry.saleDate).toLocaleDateString("en-US", {
+                            month: "short",
+                            day: "numeric",
+                            year: "numeric",
+                          })}
+                        </span>
+                        <span className="text-sm capitalize shrink-0">
+                          {entry.channel === "EBAY" ? "eBay" : entry.channel === "OFFLINE" ? "Offline" : entry.channel}
+                        </span>
+                        <span className="text-sm text-muted-foreground shrink-0">
+                          {entry.qtySold} × {formatCurrency(entry.unitPrice)} = {formatCurrency(subtotal)}
+                        </span>
+                        {entry.soldUnitCost != null && (
+                          <span className="text-sm text-emerald-600 dark:text-emerald-400 shrink-0">
+                            Profit {formatCurrency(lineProfit)}
+                          </span>
+                        )}
+                        <Link
+                          href={`/app/sold/${entry.saleId}`}
+                          className="text-sm text-primary hover:underline ml-auto shrink-0"
+                        >
+                          View sale →
+                        </Link>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
             </CardContent>
           </Card>
 

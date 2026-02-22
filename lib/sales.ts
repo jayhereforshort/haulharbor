@@ -74,16 +74,28 @@ export function saleNet(
   return gross - saleFees - saleTaxes - saleShipping;
 }
 
-/** Profit = Net - COGS; COGS = sum(qty_sold * sold_unit_cost) where sold_unit_cost is set */
+/** COGS = sum(qty_sold * sold_unit_cost) where sold_unit_cost is set */
+export function saleCost(
+  lineItems: { qty_sold: number; sold_unit_cost: number | null }[]
+): number {
+  return lineItems.reduce(
+    (sum, l) => sum + (l.sold_unit_cost ?? 0) * l.qty_sold,
+    0
+  );
+}
+
+/** Profit = Net - COGS */
 export function saleProfit(
   net: number,
   lineItems: { qty_sold: number; sold_unit_cost: number | null }[]
 ): number {
-  const cogs = lineItems.reduce(
-    (sum, l) => sum + (l.sold_unit_cost ?? 0) * l.qty_sold,
-    0
-  );
-  return net - cogs;
+  return net - saleCost(lineItems);
+}
+
+/** Profit margin = (profit / net) * 100 when net > 0, else null */
+export function saleProfitMargin(profit: number, net: number): number | null {
+  if (net <= 0) return null;
+  return (profit / net) * 100;
 }
 
 export { formatCurrency } from "@/lib/inventory";

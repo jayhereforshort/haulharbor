@@ -76,3 +76,22 @@ export async function createSale(
   revalidatePath("/app/inventory");
   return { ok: true, saleId: sale.id };
 }
+
+/** Delete a sale. Line items are cascade-deleted; trigger restores qty_on_hand / qty_sold for each item. */
+export async function deleteSale(saleId: string) {
+  const supabase = await createClient();
+  const { account } = await getCurrentAccountForUser(supabase);
+  if (!account) return { error: "Unauthorized" };
+
+  const { error } = await supabase
+    .from("sales")
+    .delete()
+    .eq("id", saleId)
+    .eq("account_id", account.id);
+
+  if (error) return { error: error.message };
+  revalidatePath("/app/sold");
+  revalidatePath("/app/inventory");
+  revalidatePath("/app");
+  return { ok: true };
+}

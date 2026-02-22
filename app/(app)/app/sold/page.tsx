@@ -4,10 +4,21 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentAccountForUser } from "@/lib/account";
 import { Button } from "@/components/ui/button";
 import { SoldTable } from "./sold-table";
+import { SoldFilters } from "./sold-filters";
+
+type SearchParams = {
+  channel?: string;
+  status?: string;
+  search?: string;
+};
 
 export const dynamic = "force-dynamic";
 
-export default async function SoldPage() {
+export default async function SoldPage({
+  searchParams,
+}: {
+  searchParams: SearchParams;
+}) {
   const supabase = await createClient();
   const { account, membership } = await getCurrentAccountForUser(supabase);
   if (!account || !membership) redirect("/app");
@@ -46,7 +57,7 @@ export default async function SoldPage() {
     .eq("account_id", account.id)
     .order("sale_date", { ascending: false });
 
-  const salesWithLines = (sales ?? []).map((s) => ({
+  const rawSales = (sales ?? []).map((s) => ({
     ...s,
     line_items: (s.sale_line_items ?? []) as {
       id: string;
@@ -63,6 +74,32 @@ export default async function SoldPage() {
       updated_at: string;
     }[],
   }));
+
+  const inventoryIds = [
+    ...new Set(
+      rawSales.flatMap((s) => s.line_items.map((l) => l.inventory_item_id))
+    ),
+  ];
+  const { data: invRows } =
+    inventoryIds.length > 0
+      ? await supabase
+          .from("inventory_items")
+          .select("id, title")
+          .in("id", inventoryIds)
+      : { data: [] };
+  const titleById: Record<string, string> = Object.fromEntries(
+    (invRows ?? []).map((r) => [r.id, r.title as string])
+  );
+
+  const search = (searchParams.search ?? "").trim().toLowerCase();
+  const filtered = rawSales.filter((sale) => {
+    if (searchParams.channel && sale.channel !== searchParams.channel) return false;
+    if (searchParams.status && sale.status !== searchParams.status) return false;
+    if (search && sale.buyer) {
+      if (!sale.buyer.toLowerCase().includes(search)) return false;
+    } else if (search && !sale.buyer) return false;
+    return true;
+  });
 
   return (
     <div className="space-y-6">
@@ -87,18 +124,27 @@ export default async function SoldPage() {
         </div>
       </div>
 
+      <SoldFilters
+        searchParams={{
+          channel: searchParams.channel,
+          status: searchParams.status,
+          search: searchParams.search,
+        }}
+      />
+
       <section>
         <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h2 className="text-subheading">All sales</h2>
-            <p className="text-caption">Table view by date. Open a row for details.</p>
+            <h2 className="text-subheading">Sales</h2>
+            <p className="text-caption">Table view by date. Open a row or use Actions to view details.</p>
           </div>
           <p className="text-sm text-muted-foreground">
-            {salesWithLines.length} sale(s)
+            {filtered.length} sale(s)
+            {filtered.length !== rawSales.length ? ` (filtered from ${rawSales.length})` : ""}
           </p>
         </div>
         <div className="rounded-lg border border-border bg-card overflow-x-auto">
-          <SoldTable sales={salesWithLines} />
+          <SoldTable sales={filtered} titleById={titleById} />
         </div>
       </section>
     </div>

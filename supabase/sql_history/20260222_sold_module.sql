@@ -67,7 +67,8 @@ BEGIN
   SET
     qty_on_hand = qty_on_hand - NEW.qty_sold,
     qty_sold = qty_sold + NEW.qty_sold,
-    updated_at = now()
+    updated_at = now(),
+    status = CASE WHEN (qty_on_hand - NEW.qty_sold) <= 0 THEN 'sold'::text ELSE status END
   WHERE id = NEW.inventory_item_id AND account_id = NEW.account_id;
   RETURN NEW;
 END;
@@ -77,6 +78,29 @@ DROP TRIGGER IF EXISTS apply_sale_line_item_inventory_trigger ON public.sale_lin
 CREATE TRIGGER apply_sale_line_item_inventory_trigger
   AFTER INSERT ON public.sale_line_items
   FOR EACH ROW EXECUTE FUNCTION public.apply_sale_line_item_inventory();
+
+-- Restore qty_on_hand and reduce qty_sold when a sale line item is deleted (e.g. sale reverted)
+CREATE OR REPLACE FUNCTION public.reverse_sale_line_item_inventory()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  UPDATE public.inventory_items
+  SET
+    qty_on_hand = qty_on_hand + OLD.qty_sold,
+    qty_sold = GREATEST(0, qty_sold - OLD.qty_sold),
+    updated_at = now()
+  WHERE id = OLD.inventory_item_id AND account_id = OLD.account_id;
+  RETURN OLD;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS reverse_sale_line_item_inventory_trigger ON public.sale_line_items;
+CREATE TRIGGER reverse_sale_line_item_inventory_trigger
+  AFTER DELETE ON public.sale_line_items
+  FOR EACH ROW EXECUTE FUNCTION public.reverse_sale_line_item_inventory();
 
 -- updated_at triggers
 DROP TRIGGER IF EXISTS set_sales_updated_at ON public.sales;
