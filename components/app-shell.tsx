@@ -2,20 +2,28 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   LayoutDashboard,
   Menu,
   X,
   LogOut,
   Settings,
+  Package,
+  ShoppingBag,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 
+const SIDEBAR_COLLAPSED_KEY = "haulharbor-sidebar-collapsed";
+
 const navItems = [
   { href: "/app", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/app/inventory", label: "Inventory", icon: Package },
+  { href: "/app/sold", label: "Sold", icon: ShoppingBag },
   { href: "/app/settings/account", label: "Settings", icon: Settings },
 ];
 
@@ -28,6 +36,28 @@ export function AppShell({
 }) {
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(SIDEBAR_COLLAPSED_KEY);
+      if (stored !== null) setSidebarCollapsed(JSON.parse(stored));
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  function toggleSidebarCollapsed() {
+    setSidebarCollapsed((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem(SIDEBAR_COLLAPSED_KEY, JSON.stringify(next));
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+  }
 
   async function signOut() {
     const supabase = createClient();
@@ -68,15 +98,32 @@ export function AppShell({
       </header>
 
       <div className="flex flex-1">
-        {/* Sidebar - desktop */}
+        {/* Sidebar - desktop: collapsible; mobile: overlay */}
         <aside
           className={cn(
-            "w-56 flex-col border-r border-border bg-card/50",
+            "flex-col border-r border-border bg-card/50 transition-[width] duration-200 ease-in-out",
             "hidden sm:flex",
-            sidebarOpen && "!flex fixed inset-y-0 left-0 z-30 flex-col pt-14 sm:relative sm:pt-0"
+            sidebarCollapsed ? "w-[4.5rem]" : "w-56",
+            sidebarOpen && "!flex fixed inset-y-0 left-0 z-30 flex-col pt-14 sm:relative sm:pt-0 sm:w-56"
           )}
         >
-          <nav className="flex flex-1 flex-col gap-1 p-4">
+          <nav className="flex flex-1 flex-col gap-1 p-3">
+            {/* Collapse toggle - desktop only */}
+            <div className="mb-2 hidden justify-end sm:flex">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 shrink-0"
+                aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+                onClick={toggleSidebarCollapsed}
+              >
+                {sidebarCollapsed ? (
+                  <ChevronRight className="h-4 w-4" />
+                ) : (
+                  <ChevronLeft className="h-4 w-4" />
+                )}
+              </Button>
+            </div>
             {navItems.map((item) => {
               const isActive =
                 item.href === "/app"
@@ -86,8 +133,10 @@ export function AppShell({
                 <Link
                   key={item.href}
                   href={item.href}
+                  title={sidebarCollapsed ? item.label : undefined}
                   className={cn(
                     "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors touch-target min-h-[44px] sm:min-h-0",
+                    sidebarCollapsed && "justify-center px-0",
                     isActive
                       ? "bg-primary text-primary-foreground"
                       : "text-muted-foreground hover:bg-muted hover:text-foreground"
@@ -95,7 +144,9 @@ export function AppShell({
                   onClick={() => setSidebarOpen(false)}
                 >
                   <item.icon className="h-5 w-5 shrink-0" />
-                  {item.label}
+                  {(!sidebarCollapsed || sidebarOpen) && (
+                    <span className="truncate">{item.label}</span>
+                  )}
                 </Link>
               );
             })}

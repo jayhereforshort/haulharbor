@@ -1,35 +1,50 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { BarChart3, DollarSign, Package, Percent } from "lucide-react";
+import { createClient } from "@/lib/supabase/server";
+import { getCurrentAccountForUser } from "@/lib/account";
 
-const kpis = [
-  {
-    title: "Revenue",
-    value: "$0",
-    description: "Total sales",
-    icon: DollarSign,
-  },
-  {
-    title: "Net Profit",
-    value: "$0",
-    description: "After COGS & fees",
-    icon: BarChart3,
-  },
-  {
-    title: "Profit Margin",
-    value: "0%",
-    description: "Net profit / revenue",
-    icon: Percent,
-  },
-  {
-    title: "Active Inventory",
-    value: "0",
-    description: "Unique SKUs",
-    icon: Package,
-  },
-];
+export default async function DashboardPage() {
+  const supabase = await createClient();
+  const { account } = await getCurrentAccountForUser(supabase);
 
-export default function DashboardPage() {
+  let activeInventoryCount = 0;
+  if (account) {
+    const { count } = await supabase
+      .from("inventory_items")
+      .select("id", { count: "exact", head: true })
+      .eq("account_id", account.id)
+      .in("status", ["draft", "ready", "listed"]);
+    activeInventoryCount = count ?? 0;
+  }
+
+  const kpis = [
+    {
+      title: "Revenue",
+      value: "$0",
+      description: "Total sales",
+      icon: DollarSign,
+    },
+    {
+      title: "Net Profit",
+      value: "$0",
+      description: "After COGS & fees",
+      icon: BarChart3,
+    },
+    {
+      title: "Profit Margin",
+      value: "0%",
+      description: "Net profit / revenue",
+      icon: Percent,
+    },
+    {
+      title: "Active Inventory",
+      value: String(activeInventoryCount),
+      description: "Unique SKUs",
+      icon: Package,
+    },
+  ];
+
   return (
     <div className="space-y-8">
       <div>
@@ -48,7 +63,9 @@ export default function DashboardPage() {
                 <CardTitle className="text-sm font-medium text-muted-foreground">
                   {kpi.title}
                 </CardTitle>
-                <kpi.icon className="h-4 w-4 text-muted-foreground" />
+                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                  <kpi.icon className="h-4 w-4" />
+                </div>
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-semibold">{kpi.value}</div>
