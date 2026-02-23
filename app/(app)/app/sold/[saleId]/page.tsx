@@ -190,9 +190,13 @@ export default async function SaleDetailPage({
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {items.map((line) => {
+                  {items.map((line, index) => {
                     const subtotal = line.qty_sold * line.unit_price;
                     const title = titleById.get(line.inventory_item_id) ?? "—";
+                    const isFirstLine = index === 0;
+                    const displayFees = line.line_fees + (isFirstLine ? sale.fees : 0);
+                    const displayTaxes = line.line_taxes + (isFirstLine ? sale.taxes : 0);
+                    const displayShipping = line.line_shipping + (isFirstLine ? sale.shipping : 0);
                     return (
                       <TableRow key={line.id}>
                         <TableCell>
@@ -211,13 +215,13 @@ export default async function SaleDetailPage({
                           {formatCurrency(subtotal)}
                         </TableCell>
                         <TableCell className="text-right text-muted-foreground">
-                          {formatCurrency(line.line_fees)}
+                          {formatCurrency(displayFees)}
                         </TableCell>
                         <TableCell className="text-right text-muted-foreground">
-                          {formatCurrency(line.line_taxes)}
+                          {formatCurrency(displayTaxes)}
                         </TableCell>
                         <TableCell className="text-right text-muted-foreground">
-                          {formatCurrency(line.line_shipping)}
+                          {formatCurrency(displayShipping)}
                         </TableCell>
                         <TableCell className="text-right text-muted-foreground">
                           {line.sold_unit_cost != null

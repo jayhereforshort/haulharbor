@@ -54,12 +54,18 @@ export default async function InventoryItemDetailPage({
       qty_sold,
       unit_price,
       sold_unit_cost,
+      line_fees,
+      line_taxes,
+      line_shipping,
       created_at,
       sales (
         id,
         sale_date,
         channel,
-        status
+        status,
+        fees,
+        taxes,
+        shipping
       )
     `
     )
@@ -67,19 +73,47 @@ export default async function InventoryItemDetailPage({
     .eq("account_id", account.id)
     .order("created_at", { ascending: false });
 
-  type SaleRow = { id: string; sale_date: string; channel: string; status: string };
+  type SaleRow = { id: string; sale_date: string; channel: string; status: string; fees: number; taxes: number; shipping: number };
   type LineRow = {
     id: string;
     sale_id: string;
     qty_sold: number;
     unit_price: number;
     sold_unit_cost: number | null;
+    line_fees: number;
+    line_taxes: number;
+    line_shipping: number;
     created_at: string;
     sales: SaleRow | SaleRow[] | null;
   };
   const saleHistoryLines = (lineItemsWithSales ?? []) as LineRow[];
+
+  const saleIds = [...new Set(saleHistoryLines.map((l) => l.sale_id))];
+  const { data: lineCountRows } = await supabase
+    .from("sale_line_items")
+    .select("sale_id")
+    .in("sale_id", saleIds);
+  const lineCountBySaleId = (lineCountRows ?? []).reduce(
+    (acc, row) => {
+      const id = (row as { sale_id: string }).sale_id;
+      acc[id] = (acc[id] ?? 0) + 1;
+      return acc;
+    },
+    {} as Record<string, number>
+  );
+
   const saleHistory = saleHistoryLines.map((line) => {
     const sale = Array.isArray(line.sales) ? line.sales[0] : line.sales;
+    const saleFees = sale?.fees ?? 0;
+    const saleTaxes = sale?.taxes ?? 0;
+    const saleShipping = sale?.shipping ?? 0;
+    const isSingleLineSale = (lineCountBySaleId[line.sale_id] ?? 0) === 1;
+    const fees = line.line_fees + (isSingleLineSale ? saleFees : 0);
+    const taxes = line.line_taxes + (isSingleLineSale ? saleTaxes : 0);
+    const shipping = line.line_shipping + (isSingleLineSale ? saleShipping : 0);
+    const subtotal = line.qty_sold * line.unit_price;
+    const cost = (line.sold_unit_cost ?? 0) * line.qty_sold;
+    const netProfit = subtotal - cost - fees - taxes - shipping;
     return {
       lineId: line.id,
       saleId: line.sale_id,
@@ -89,6 +123,14 @@ export default async function InventoryItemDetailPage({
       qtySold: line.qty_sold,
       unitPrice: line.unit_price,
       soldUnitCost: line.sold_unit_cost,
+      lineFees: line.line_fees,
+      lineTaxes: line.line_taxes,
+      lineShipping: line.line_shipping,
+      fees,
+      taxes,
+      shipping,
+      subtotal,
+      netProfit,
       createdAt: line.created_at,
     };
   });
@@ -223,44 +265,48 @@ export default async function InventoryItemDetailPage({
                 </p>
               ) : (
                 <ul className="space-y-0">
-                  {saleHistory.map((entry, index) => {
-                    const subtotal = entry.qtySold * entry.unitPrice;
-                    const cost = (entry.soldUnitCost ?? 0) * entry.qtySold;
-                    const lineProfit = subtotal - cost;
-                    return (
-                      <li
-                        key={entry.lineId}
-                        className={`flex flex-wrap items-center gap-x-4 gap-y-1 py-3 ${
-                          index > 0 ? "border-t border-border" : ""
-                        }`}
-                      >
-                        <span className="text-sm font-medium text-muted-foreground shrink-0 w-24">
-                          {new Date(entry.saleDate).toLocaleDateString("en-US", {
-                            month: "short",
-                            day: "numeric",
-                            year: "numeric",
-                          })}
-                        </span>
-                        <span className="text-sm capitalize shrink-0">
-                          {entry.channel === "EBAY" ? "eBay" : entry.channel === "OFFLINE" ? "Offline" : entry.channel}
-                        </span>
+                  {saleHistory.map((entry, index) => (
+                    <li
+                      key={entry.lineId}
+                      className={`flex flex-wrap items-center gap-x-4 gap-y-1 py-3 ${
+                        index > 0 ? "border-t border-border" : ""
+                      }`}
+                    >
+                      <span className="text-sm font-medium text-muted-foreground shrink-0 w-24">
+                        {new Date(entry.saleDate).toLocaleDateString("en-US", {
+                          month: "short",
+                          day: "numeric",
+                          year: "numeric",
+                        })}
+                      </span>
+                      <span className="text-sm capitalize shrink-0">
+                        {entry.channel === "EBAY" ? "eBay" : entry.channel === "OFFLINE" ? "Offline" : entry.channel}
+                      </span>
+                      <span className="text-sm text-muted-foreground shrink-0">
+                        {entry.qtySold} × {formatCurrency(entry.unitPrice)} = {formatCurrency(entry.subtotal)}
+                      </span>
+                      {(entry.fees > 0 || entry.taxes > 0 || entry.shipping > 0) && (
                         <span className="text-sm text-muted-foreground shrink-0">
-                          {entry.qtySold} × {formatCurrency(entry.unitPrice)} = {formatCurrency(subtotal)}
+                          {[
+                            entry.fees > 0 && `Fees ${formatCurrency(entry.fees)}`,
+                            entry.taxes > 0 && `Tax ${formatCurrency(entry.taxes)}`,
+                            entry.shipping > 0 && `Ship ${formatCurrency(entry.shipping)}`,
+                          ]
+                            .filter(Boolean)
+                            .join(" · ")}
                         </span>
-                        {entry.soldUnitCost != null && (
-                          <span className="text-sm text-emerald-600 dark:text-emerald-400 shrink-0">
-                            Profit {formatCurrency(lineProfit)}
-                          </span>
-                        )}
-                        <Link
-                          href={`/app/sold/${entry.saleId}`}
-                          className="text-sm text-primary hover:underline ml-auto shrink-0"
-                        >
-                          View sale →
-                        </Link>
-                      </li>
-                    );
-                  })}
+                      )}
+                      <span className="text-sm text-emerald-600 dark:text-emerald-400 shrink-0">
+                        Profit {formatCurrency(entry.netProfit)}
+                      </span>
+                      <Link
+                        href={`/app/sold/${entry.saleId}`}
+                        className="text-sm text-primary hover:underline ml-auto shrink-0"
+                      >
+                        View sale →
+                      </Link>
+                    </li>
+                  ))}
                 </ul>
               )}
             </CardContent>
