@@ -8,7 +8,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { formatCurrency } from "@/lib/inventory";
+import { formatCurrency, getStatusBadgeVariant } from "@/lib/inventory";
 import { InventoryRowActions } from "./inventory-row-actions";
 
 type InventoryRow = {
@@ -28,11 +28,6 @@ type Props = {
   accountId: string;
   items: InventoryRow[];
 };
-
-function statusVariant(status: string): "default" | "secondary" {
-  if (status === "listed" || status === "sold") return "default";
-  return "secondary";
-}
 
 function formatSubtitle(createdAt: string) {
   const d = new Date(createdAt);
@@ -85,7 +80,7 @@ export function InventoryTable({ accountId, items }: Props) {
             </TableCell>
             <TableCell>
               <Badge
-                variant={statusVariant(item.status)}
+                variant={getStatusBadgeVariant(item.status)}
                 className="capitalize"
               >
                 {item.status}
@@ -93,7 +88,7 @@ export function InventoryTable({ accountId, items }: Props) {
             </TableCell>
             <TableCell>
               {item.qty_listed > 0 ? (
-                <Badge variant="default">Listed</Badge>
+                <Badge variant="success">Listed</Badge>
               ) : (
                 <Badge variant="secondary">Unlisted</Badge>
               )}

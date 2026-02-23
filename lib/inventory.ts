@@ -8,6 +8,24 @@ export const INVENTORY_STATUSES = [
 
 export type InventoryStatus = (typeof INVENTORY_STATUSES)[number];
 
+/** Badge variant for each inventory status (Sold=red, Listed=green, etc.) */
+export const STATUS_BADGE_VARIANT: Record<
+  InventoryStatus,
+  "secondary" | "info" | "success" | "destructive" | "muted"
+> = {
+  sold: "destructive",
+  listed: "success",
+  ready: "info",
+  draft: "secondary",
+  archived: "muted",
+};
+
+export function getStatusBadgeVariant(
+  status: string
+): "secondary" | "info" | "success" | "destructive" | "muted" {
+  return STATUS_BADGE_VARIANT[status as InventoryStatus] ?? "secondary";
+}
+
 export type ItemSpecific = { key: string; value: string };
 
 export function parseItemSpecificsInput(input: string): Record<string, string> {

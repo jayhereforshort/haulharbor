@@ -5,7 +5,7 @@ import { getCurrentAccountForUser } from "@/lib/account";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { formatCurrency } from "@/lib/inventory";
+import { formatCurrency, getStatusBadgeVariant } from "@/lib/inventory";
 import { ItemQuickEditForm } from "../item-quick-edit-form";
 import { PhotoGallery } from "../photo-gallery";
 
@@ -222,7 +222,9 @@ export default async function InventoryItemDetailPage({
             <Card className="border-border shadow-card">
               <CardContent className="pt-6">
                 <p className="text-xs uppercase tracking-wide text-muted-foreground">Status</p>
-                <p className="text-2xl font-semibold capitalize">{item.status}</p>
+                <Badge variant={getStatusBadgeVariant(item.status)} className="mt-1 capitalize">
+                  {item.status}
+                </Badge>
               </CardContent>
             </Card>
           </div>
